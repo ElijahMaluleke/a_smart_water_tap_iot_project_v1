@@ -30,8 +30,14 @@ enum led_id_t {
 /* scheduling priority used by each thread */
 #define PRIORITY 7
 
+#define OPEN_VALVE		1
+#define CLOSE_VALVE		0
+
 #define HIGH			1
 #define LOW				0
+
+#define ON				1
+#define OFF				0
 
 #define MOTION_DETECTOR	13	/*  */
 
@@ -63,6 +69,7 @@ static struct gpio_callback motion_cb_data;
 /********************************************************************************
  * 
  ********************************************************************************/
+static uint8_t buzzer_state = OFF;
 static uint32_t output_gpio[MAX_OUTPUTS] = { WATER_VALVE, BUZZER, LIGHTWELL_RED, 
 											 LIGHTWELL_GREEN, LIGHTWELL_BLUE };
 static uint32_t input_gpio[MAX_INPUTS] = { MOTION_DETECTOR };
@@ -207,7 +214,8 @@ void configuer_all_input(void) {
  ********************************************************************************/
 void motion_detected(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
-	gpio_pin_set(gpio_dev, WATER_VALVE, true);
+	buzzer_state = ON;
+	gpio_pin_set(gpio_dev, WATER_VALVE, OPEN_VALVE);
 	/* start periodic timer that expires once every second */
 	k_timer_start(&my_timer, K_SECONDS(10), K_NO_WAIT);
 }
@@ -216,7 +224,8 @@ void motion_detected(const struct device *dev, struct gpio_callback *cb, uint32_
  * Define a variable of type static struct gpio_callback
  ********************************************************************************/
 void my_expiry_function(struct k_timer *timer_id) {
-	gpio_pin_set(gpio_dev, WATER_VALVE, false);
+	buzzer_state = OFF;
+	gpio_pin_set(gpio_dev, WATER_VALVE, CLOSE_VALVE);
 }
 
 /********************************************************************************
@@ -238,7 +247,6 @@ void main(void)
 		return;
 	}
 
-	//
 	/* Initialize the static struct gpio_callback variable */
 	gpio_init_callback(&motion_cb_data, motion_detected, BIT(13));
 	/* Add the callback function by calling gpio_add_callback() */
@@ -249,7 +257,10 @@ void main(void)
 
 	//
 	while (1) {
-		
+		/*if(buzzer_state == ON) {
+			beep_buzzer(3, 1);
+			k_msleep(SLEEP_TIME_MS);
+		}*/
 		beep_buzzer(3, 1);
 		k_msleep(SLEEP_TIME_MS);
 	}
