@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"name": "a_smart_water_tap_iot_project_v1",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {},
+		"nrf-connect.toolchain.path": "${nrf-connect.toolchain:2.3.0}"
+	}
+}
