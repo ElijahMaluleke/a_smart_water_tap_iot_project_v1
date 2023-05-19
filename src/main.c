@@ -32,6 +32,7 @@ enum led_id_t {
 
 #define HIGH			1
 #define LOW				0
+
 #define MOTION_DETECTOR	13	/*  */
 
 #define WATER_VALVE	 	16			/*  */
@@ -40,20 +41,31 @@ enum led_id_t {
 #define LIGHTWELL_GREEN 30
 #define LIGHTWELL_BLUE 	31
 
+#define MAX_OUTPUTS		5
+#define MAX_INPUTS		1
+
 /* 1000 msec = 1 sec */
 #define SLEEP_TIME_MS   1000
 
 /* Option 1: by node label */
 #define MY_GPIO0 DT_NODELABEL(gpio0)
 
+/********************************************************************************
+ * 
+ ********************************************************************************/
 // const struct device *gpio_dev;
 const struct device *gpio_dev = DEVICE_DT_GET(MY_GPIO0);
-
 //
 struct k_timer my_timer;
 // extern void my_expiry_function(struct k_timer *timer_id);
-
 static struct gpio_callback motion_cb_data;
+
+/********************************************************************************
+ * 
+ ********************************************************************************/
+static uint32_t output_gpio[MAX_OUTPUTS] = { WATER_VALVE, BUZZER, LIGHTWELL_RED, 
+											 LIGHTWELL_GREEN, LIGHTWELL_BLUE };
+static uint32_t input_gpio[MAX_INPUTS] = { MOTION_DETECTOR };
 
 /********************************************************************************
  * Play tone
@@ -65,6 +77,8 @@ void blink(uint32_t sleep_ms, enum led_id_t id);
 void blink0(void);
 void blink1(void);
 void blink2(void);
+void configuer_all_input(void);
+void configuer_all_output(void);
 
 /********************************************************************************
  *
@@ -155,6 +169,40 @@ void blink2(void) {
 }
 
 /********************************************************************************
+ * 
+ ********************************************************************************/
+void configuer_all_output(void) {
+	int err;
+	for(uint32_t i = 0; i < MAX_OUTPUTS; i++) {
+		if (!device_is_ready(gpio_dev)) { 
+			return;
+		}
+
+		err = gpio_pin_configure(gpio_dev, output_gpio[i], GPIO_OUTPUT_INACTIVE);
+		if (err < 0) {
+			return;
+		}	
+	}
+}
+
+/********************************************************************************
+ * 
+ ********************************************************************************/
+void configuer_all_input(void) {
+	int err;
+	for(uint32_t i = 0; i < MAX_INPUTS; i++) {
+		if (!device_is_ready(gpio_dev)) { 
+			return;
+		}
+
+		err = gpio_pin_configure(gpio_dev, input_gpio[i], GPIO_INPUT | GPIO_PULL_DOWN);
+		if (err < 0) {
+			return;
+		}	
+	}
+}
+
+/********************************************************************************
  * Define the callback function
  ********************************************************************************/
 void motion_detected(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
@@ -181,39 +229,8 @@ void main(void)
 	k_msleep(SLEEP_TIME_MS * 10);
 	printk("A Smart Water Tap Leakage Controller IoT Project/n/r");
 
-	if (!device_is_ready(gpio_dev)) { 
-		return;
-	}
-
-	ret = gpio_pin_configure(gpio_dev, LIGHTWELL_RED, GPIO_OUTPUT_INACTIVE);
-	if (ret < 0) {
-		return;
-	}
-
-	ret = gpio_pin_configure(gpio_dev, LIGHTWELL_GREEN, GPIO_OUTPUT_INACTIVE);
-	if (ret < 0) {
-		return;
-	}
-
-	ret = gpio_pin_configure(gpio_dev, LIGHTWELL_BLUE, GPIO_OUTPUT_INACTIVE);
-	if (ret < 0) {
-		return;
-	}
-
-	ret = gpio_pin_configure(gpio_dev, BUZZER, GPIO_OUTPUT_INACTIVE);
-	if (ret < 0) {
-		return;
-	}
-
-	ret = gpio_pin_configure(gpio_dev, WATER_VALVE, GPIO_OUTPUT_INACTIVE);
-	if (ret < 0) {
-		return;
-	}
-
-	ret = gpio_pin_configure(gpio_dev, MOTION_DETECTOR, GPIO_INPUT | GPIO_PULL_DOWN);
-	if (ret < 0) {
-		return;
-	}
+	configuer_all_output();
+	configuer_all_input();
 
 	/* Configure the interrupt on the button's pin */
 	ret = gpio_pin_interrupt_configure(gpio_dev, MOTION_DETECTOR, GPIO_INT_EDGE_TO_ACTIVE);
@@ -224,7 +241,6 @@ void main(void)
 	//
 	/* Initialize the static struct gpio_callback variable */
 	gpio_init_callback(&motion_cb_data, motion_detected, BIT(13));
-
 	/* Add the callback function by calling gpio_add_callback() */
 	gpio_add_callback(gpio_dev, &motion_cb_data);
 
